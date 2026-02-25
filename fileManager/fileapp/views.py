@@ -1,89 +1,222 @@
-
-
 from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+import os
+from datetime import datetime
+from .services import get_system_user_service
+
+_directory_cache = {}
+_cache_timeout = 5
 
 
 def home_view(request):
-    # ── Données fictives pour la vue ──────────────────────────
-    current_path = '/home/cridavec/public_html'
-
-    folders = [
-        {'name': '.cagefs',       'size': '4 KB',  'modified': 'Dec 9, 2025, 12:41 PM',  'permissions': '0771'},
-        {'name': '.caldav',       'size': '4 KB',  'modified': 'Jan 5, 2026, 4:12 PM',   'permissions': '0755'},
-        {'name': '.cl.selector',  'size': '4 KB',  'modified': 'Jan 24, 2026, 4:56 PM',  'permissions': '0755'},
-        {'name': '.clwpos',       'size': '4 KB',  'modified': 'Dec 9, 2025, 12:39 PM',  'permissions': '0700'},
-        {'name': '.cpanel',       'size': '4 KB',  'modified': 'Today, 11:20 AM',         'permissions': '0700'},
-        {'name': '.htpasswds',    'size': '4 KB',  'modified': 'Dec 9, 2025, 12:39 PM',  'permissions': '0755'},
-        {'name': '.koality',      'size': '4 KB',  'modified': 'Dec 9, 2025, 5:31 PM',   'permissions': '0755'},
-        {'name': '.softaculous',  'size': '4 KB',  'modified': 'Dec 9, 2025, 5:31 PM',   'permissions': '0711'},
-        {'name': '.spamassassin', 'size': '4 KB',  'modified': 'Dec 9, 2025, 12:39 PM',  'permissions': '0700'},
-        {'name': '.trash',        'size': '4 KB',  'modified': 'Today, 6:27 AM',          'permissions': '0700'},
-        {'name': 'app',           'size': '4 KB',  'modified': 'Jan 10, 2026, 9:00 AM',  'permissions': '0755'},
-        {'name': 'assets',        'size': '4 KB',  'modified': 'Jan 12, 2026, 2:15 PM',  'permissions': '0755'},
-        {'name': 'cache',         'size': '4 KB',  'modified': 'Today, 8:00 AM',          'permissions': '0700'},
-        {'name': 'etc',           'size': '4 KB',  'modified': 'Jan 25, 2026, 8:05 AM',  'permissions': '0750'},
-        {'name': 'logs',          'size': '4 KB',  'modified': 'Today, 10:12 AM',         'permissions': '0700'},
-        {'name': 'mail',          'size': '4 KB',  'modified': 'Jan 5, 2026, 4:12 PM',   'permissions': '0751'},
-        {'name': 'public_ftp',    'size': '4 KB',  'modified': 'Dec 9, 2025, 12:39 PM',  'permissions': '0750'},
-        {'name': 'public_html',   'size': '4 KB',  'modified': 'Jan 6, 2026, 12:28 PM',  'permissions': '0755'},
-        {'name': 'ssl',           'size': '4 KB',  'modified': 'Dec 9, 2025, 2:23 PM',   'permissions': '0755'},
-        {'name': 'uploads',       'size': '4 KB',  'modified': 'Today, 3:45 PM',          'permissions': '0755'},
-    ]
-
-    files = [
-        {'name': '.htaccess',       'size': '1.2 KB', 'modified': 'Jan 20, 2026, 9:10 AM',  'type': 'text/plain',       'permissions': '0644', 'ext': 'txt'},
-        {'name': 'composer.json',   'size': '3.4 KB', 'modified': 'Dec 15, 2025, 11:00 AM', 'type': 'application/json', 'permissions': '0644', 'ext': 'json'},
-        {'name': 'composer.lock',   'size': '120 KB', 'modified': 'Dec 15, 2025, 11:02 AM', 'type': 'application/json', 'permissions': '0644', 'ext': 'json'},
-        {'name': 'index.php',       'size': '5.8 KB', 'modified': 'Jan 18, 2026, 3:22 PM',  'type': 'text/x-php',       'permissions': '0644', 'ext': 'php'},
-        {'name': 'README.md',       'size': '2.1 KB', 'modified': 'Dec 10, 2025, 8:00 AM',  'type': 'text/markdown',    'permissions': '0644', 'ext': 'md'},
-        {'name': 'robots.txt',      'size': '0.5 KB', 'modified': 'Dec 9, 2025, 12:40 PM',  'type': 'text/plain',       'permissions': '0644', 'ext': 'txt'},
-        {'name': 'sitemap.xml',     'size': '18 KB',  'modified': 'Jan 22, 2026, 7:30 AM',  'type': 'text/xml',         'permissions': '0644', 'ext': 'xml'},
-        {'name': 'style.css',       'size': '42 KB',  'modified': 'Jan 19, 2026, 5:00 PM',  'type': 'text/css',         'permissions': '0644', 'ext': 'css'},
-        {'name': 'wp-config.php',   'size': '3.2 KB', 'modified': 'Dec 12, 2025, 2:00 PM',  'type': 'text/x-php',       'permissions': '0400', 'ext': 'php'},
-        {'name': 'error_log',       'size': '88 KB',  'modified': 'Today, 10:11 AM',         'type': 'text/plain',       'permissions': '0600', 'ext': 'log'},
-        {'name': 'favicon.ico',     'size': '4 KB',   'modified': 'Dec 9, 2025, 12:40 PM',  'type': 'image/x-icon',     'permissions': '0644', 'ext': 'ico'},
-        {'name': 'screenshot.png',  'size': '256 KB', 'modified': 'Jan 14, 2026, 10:05 AM', 'type': 'image/png',        'permissions': '0644', 'ext': 'png'},
-    ]
-
-    # Arborescence sidebar
-    sidebar_tree = [
-        {
-            'name': '(/home/cridavec)',
-            'path': '/home/cridavec',
-            'is_root': True,
-            'children': [
-                {'name': '.cagefs',      'path': '/home/cridavec/.cagefs',      'children': []},
-                {'name': '.caldav',      'path': '/home/cridavec/.caldav',      'children': []},
-                {'name': '.cpanel',      'path': '/home/cridavec/.cpanel',      'children': [
-                    {'name': '.htpasswds', 'path': '/home/cridavec/.cpanel/.htpasswds', 'children': []},
-                    {'name': '.koality',   'path': '/home/cridavec/.cpanel/.koality',   'children': []},
-                ]},
-                {'name': 'etc',          'path': '/home/cridavec/etc',          'children': []},
-                {'name': 'logs',         'path': '/home/cridavec/logs',         'children': []},
-                {'name': 'mail',         'path': '/home/cridavec/mail',         'children': []},
-                {'name': 'public_ftp',   'path': '/home/cridavec/public_ftp',   'children': []},
-                {'name': 'public_html',  'path': '/home/cridavec/public_html',  'is_current': True, 'children': [
-                    {'name': '.well-known', 'path': '/home/cridavec/public_html/.well-known', 'children': []},
-                    {'name': 'app',         'path': '/home/cridavec/public_html/app',         'children': [
-                        {'name': 'Actions',    'path': '/home/cridavec/public_html/app/Actions',    'children': []},
-                        {'name': 'Console',    'path': '/home/cridavec/public_html/app/Console',    'children': [
-                            {'name': 'Exceptions', 'path': '/home/cridavec/public_html/app/Console/Exceptions', 'children': []},
-                            {'name': 'Exports',    'path': '/home/cridavec/public_html/app/Console/Exports',    'children': []},
-                        ]},
-                        {'name': 'Http',       'path': '/home/cridavec/public_html/app/Http',       'children': []},
-                    ]},
-                    {'name': 'assets',      'path': '/home/cridavec/public_html/assets',      'children': []},
-                    {'name': 'uploads',     'path': '/home/cridavec/public_html/uploads',     'children': []},
-                ]},
-                {'name': 'ssl',          'path': '/home/cridavec/ssl',          'children': []},
-            ]
-        }
-    ]
-
-    context = {
-        'current_path': current_path,
-        'folders': folders,
-        'files': files,
-        'sidebar_tree': sidebar_tree,
-    }
+    user_context = getattr(request, 'user_context', {})
+    if not user_context.get('is_authenticated'):
+        return render(request, 'error.html', {'error': "Impossible de déterminer l'utilisateur système", 'user_context': user_context})
+    file_service   = get_system_user_service(user_context['username'])
+    requested_path = request.GET.get('path', user_context.get('current_path'))
+    result         = file_service.list_directory(requested_path)
+    if 'error' in result:
+        return render(request, 'error.html', {'error': result['error'], 'user_context': user_context})
+    folders, files = [], []
+    for item in result['items']:
+        item_data = {'name': item['name'], 'path': item['path'], 'size': format_size(item['size']),
+                     'modified': format_datetime(item['modified']), 'permissions': item['permissions']}
+        if item['is_dir']:
+            folders.append(item_data)
+        else:
+            ext = os.path.splitext(item['name'])[1].lower().lstrip('.')
+            item_data.update({'type': get_mime_type(item['name']), 'ext': ext or 'unknown'})
+            files.append(item_data)
+    folders.sort(key=lambda x: x['name'].lower())
+    files.sort(key=lambda x: x['name'].lower())
+    sidebar_tree = build_sidebar_tree(user_context['root_path'], result['path'])
+    context = {'user_context': user_context, 'current_path': result['path'],
+               'folders': folders, 'files': files, 'sidebar_tree': sidebar_tree,
+               'system_info': user_context.get('system_info', {})}
+    if request.GET.get('ajax') == '1':
+        return render(request, 'components/file_list.html', context)
     return render(request, 'base.html', context)
+
+
+def editor_view(request):
+    user_context = getattr(request, 'user_context', {})
+    if not user_context.get('is_authenticated'):
+        return render(request, 'error.html', {'error': 'Non authentifié', 'user_context': user_context})
+    file_path = request.GET.get('path', '').strip()
+    if not file_path:
+        return render(request, 'error.html', {'error': 'Chemin manquant', 'user_context': user_context})
+    svc  = get_system_user_service(user_context['username'])
+    real = svc._safe(file_path)
+    if not real or not os.path.isfile(real):
+        return render(request, 'error.html', {'error': 'Fichier introuvable ou accès refusé', 'user_context': user_context})
+    encoding = request.GET.get('encoding', 'utf-8')
+    try:
+        with open(real, 'r', encoding=encoding, errors='replace') as f:
+            content = f.read()
+    except Exception as e:
+        return render(request, 'error.html', {'error': str(e), 'user_context': user_context})
+    file_name = os.path.basename(real)
+    file_ext  = os.path.splitext(file_name)[1].lstrip('.') or 'txt'
+    return render(request, 'editor.html', {
+        'file_path': real, 'file_name': file_name,
+        'file_dir': os.path.dirname(real), 'file_ext': file_ext,
+        'file_content': content, 'user_context': user_context,
+    })
+
+
+@require_POST
+def file_operations(request):
+    user_context = getattr(request, 'user_context', {})
+    if not user_context.get('is_authenticated'):
+        return JsonResponse({'error': 'Non authentifié'}, status=403)
+    svc = get_system_user_service(user_context['username'])
+    op  = request.POST.get('operation', '').strip()
+
+    if op == 'create_folder':
+        result = svc.create_directory(
+            request.POST.get('name', '').strip(),
+            request.POST.get('parent_path', '').strip() or None)
+
+    elif op == 'create_file':
+        result = svc.create_file(
+            request.POST.get('name', '').strip(),
+            request.POST.get('parent_path', '').strip() or None)
+
+    elif op == 'save_file':
+        path     = request.POST.get('path', '').strip()
+        content  = request.POST.get('content', '')
+        encoding = request.POST.get('encoding', 'utf-8').strip()
+        if not path:
+            return JsonResponse({'error': 'Chemin requis'})
+        real = svc._safe(path)
+        if not real:
+            return JsonResponse({'error': 'Accès non autorisé'})
+        try:
+            with open(real, 'w', encoding=encoding, errors='replace') as f:
+                f.write(content)
+            result = {'success': True}
+        except PermissionError:
+            result = {'error': 'Permission refusée'}
+        except Exception as e:
+            result = {'error': str(e)}
+
+    elif op == 'delete':
+        raw   = request.POST.get('paths', '') or request.POST.get('path', '')
+        paths = [p.strip() for p in raw.split('|') if p.strip()]
+        if not paths:
+            return JsonResponse({'error': 'Aucun élément spécifié'})
+        errors = []
+        for p in paths:
+            r = svc.delete_item(p)
+            if 'error' in r:
+                errors.append(r['error'])
+        # Succès si AU MOINS UN élément supprimé
+        if errors and len(errors) == len(paths):
+            result = {'error': ' | '.join(errors)}
+        else:
+            result = {'success': True}
+            if errors:
+                result['warnings'] = ' | '.join(errors)
+
+    elif op == 'move':
+        raw_src  = request.POST.get('sources', '') or request.POST.get('source', '')
+        dest_dir = request.POST.get('destination', '').strip()
+        sources  = [s.strip() for s in raw_src.split('|') if s.strip()]
+        if not sources or not dest_dir:
+            return JsonResponse({'error': 'Source(s) et destination requises'})
+        errors = []
+        for src in sources:
+            dest = os.path.join(dest_dir, os.path.basename(src))
+            r = svc.move_item(src, dest)
+            if 'error' in r:
+                errors.append(r['error'])
+        result = {'error': ' | '.join(errors)} if errors else {'success': True}
+
+    elif op == 'copy':
+        raw_src  = request.POST.get('sources', '') or request.POST.get('source', '')
+        dest_dir = request.POST.get('destination', '').strip()
+        sources  = [s.strip() for s in raw_src.split('|') if s.strip()]
+        if not sources or not dest_dir:
+            return JsonResponse({'error': 'Source(s) et destination requises'})
+        errors = []
+        for src in sources:
+            dest = os.path.join(dest_dir, os.path.basename(src))
+            r = svc.copy_item(src, dest)
+            if 'error' in r:
+                errors.append(r['error'])
+        result = {'error': ' | '.join(errors)} if errors else {'success': True}
+
+    elif op == 'rename':
+        result = svc.rename_item(
+            request.POST.get('path', '').strip(),
+            request.POST.get('new_name', '').strip())
+
+    elif op == 'chmod':
+        result = svc.chmod_item(
+            request.POST.get('path', '').strip(),
+            request.POST.get('mode', '').strip())
+
+    elif op == 'compress':
+        raw_src = request.POST.get('sources', '').strip()
+        sources = [s.strip() for s in raw_src.split('|') if s.strip()]
+        result = svc.compress_items(
+            sources,
+            request.POST.get('destination', '').strip(),
+            request.POST.get('format', 'zip').strip(),
+            request.POST.get('include_hidden', '1') == '1',
+            request.POST.get('follow_symlinks', '0') == '1')
+
+    else:
+        result = {'error': f'Opération inconnue : "{op}"'}
+
+    return JsonResponse(result)
+
+
+def format_size(size_bytes):
+    if size_bytes == 0: return "0 B"
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size_bytes < 1024: return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.1f} TB"
+
+
+def format_datetime(timestamp):
+    return datetime.fromtimestamp(timestamp).strftime("%b %d, %Y, %I:%M %p")
+
+
+def get_mime_type(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return {
+        '.txt':'text/plain','.json':'application/json','.php':'text/x-php',
+        '.md':'text/markdown','.xml':'text/xml','.css':'text/css',
+        '.js':'application/javascript','.html':'text/html','.png':'image/png',
+        '.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif',
+        '.ico':'image/x-icon','.log':'text/plain','.py':'text/x-python',
+        '.sh':'text/x-sh','.pdf':'application/pdf','.zip':'application/zip',
+        '.tar':'application/x-tar',
+    }.get(ext, 'application/octet-stream')
+
+
+def build_sidebar_tree(root_path, current_path):
+    import time
+    key = f"tree_{root_path}_{current_path}"
+    now = time.time()
+    if key in _directory_cache:
+        data, ts = _directory_cache[key]
+        if now - ts < _cache_timeout: return data
+    def _recurse(path, depth=0, max_depth=2):
+        if depth >= max_depth: return []
+        tree = []
+        try:
+            for name in sorted(os.listdir(path))[:50]:
+                ip = os.path.join(path, name)
+                if os.path.isdir(ip):
+                    try: tree.append({'name': name, 'path': ip, 'is_current': ip == current_path, 'children': _recurse(ip, depth+1, max_depth)})
+                    except (PermissionError, OSError): pass
+        except (PermissionError, OSError): pass
+        return tree
+    result = [{'name': f'({os.path.basename(root_path)})', 'path': root_path, 'is_root': True, 'children': _recurse(root_path)}]
+    _directory_cache[key] = (result, now)
+    for k in [k for k, (_, ts) in list(_directory_cache.items()) if now - ts > _cache_timeout*2]: del _directory_cache[k]
+    return result

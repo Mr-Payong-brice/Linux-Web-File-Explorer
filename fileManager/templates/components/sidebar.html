@@ -6,8 +6,13 @@
 
     <!-- Chemin courant -->
     <div class="fm-sidebar__path-bar">
-        <input type="text" class="fm-path-input" value="{{ current_path }}" readonly>
-        <button class="fm-path-go">Go</button>
+        <input type="text" 
+               class="fm-path-input" 
+               id="fm-path-input" 
+               value="{{ current_path }}" 
+               placeholder="Entrez un chemin..."
+               onkeypress="handlePathKeypress(event)">
+        <button class="fm-path-go" onclick="navigateFromPathInput()">Go</button>
     </div>
 
     <!-- Collapse All -->

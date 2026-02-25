@@ -10,7 +10,9 @@
                 {% if node.children %}fm-tree-row--has-children{% endif %}
                 {% if node.is_root %}fm-tree-row--root{% endif %}
                 {% if node.is_current %}fm-tree-row--active{% endif %}"
-         data-path="{{ node.path }}">
+         data-path="{{ node.path }}"
+         onclick="navigateToFolder('{{ node.path }}')"
+         style="cursor: pointer;">
 
         <!-- Indentation via --depth -->
         <span class="fm-tree-indent"></span>

@@ -1,8 +1,5 @@
-<!--{# components/file_item.html-->
-<!--   Variables attendues :-->
-<!--     file.name, file.size, file.modified, file.type, file.permissions, file.ext-->
-<!--#}-->
-<tr class="fm-row fm-row--file" data-name="{{ file.name }}" data-type="file" data-ext="{{ file.ext }}">
+<!--{# components/file_item.html #}-->
+<tr class="fm-row fm-row--file" data-name="{{ file.name }}" data-type="file" data-ext="{{ file.ext }}" data-path="{{ file.path }}">
     <td class="fm-cell--check">
         <input type="checkbox" class="fm-checkbox" aria-label="Sélectionner {{ file.name }}">
     </td>
@@ -28,10 +25,10 @@
                 <span class="fm-ext-badge fm-ext--txt">txt</span>
             {% endif %}
         </span>
-        <a href="#" class="fm-file-link" title="{{ file.name }}">{{ file.name }}</a>
+        <a href="#" class="fm-file-link" title="{{ file.name }}" data-path="{{ file.path }}">{{ file.name }}</a>
     </td>
     <td class="fm-cell--size">{{ file.size }}</td>
     <td class="fm-cell--modified">{{ file.modified }}</td>
     <td class="fm-cell--type">{{ file.type }}</td>
-    <td class="fm-cell--perm">{{ file.permissions }}</td>
+    <td class="fm-cell--perm fm-perm">{{ file.permissions }}</td>
 </tr>

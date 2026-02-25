@@ -49,6 +49,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'fileManager.middleware.FileSecurityMiddleware',
 ]
 
 ROOT_URLCONF = 'fileManager.urls'
@@ -123,3 +124,7 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# File Manager Security Settings
+FILE_MANAGER_ROOT = os.path.expanduser("~")  # Racine autorisée : /home/bricevalery
+FILE_MANAGER_USER_ISOLATION = True  # Activer l'isolation par utilisateur
